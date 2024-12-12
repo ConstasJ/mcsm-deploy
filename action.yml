@@ -1,23 +1,32 @@
-name: 'The name of your action here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: 'MCSManager-Deploy'
+description: '将指定的文件通过MCSManager部署到游戏服务器后台'
+author: 'ConstasJ'
 
 # Add your action's branding here. This will appear on the GitHub Marketplace.
 branding:
-  icon: 'heart'
-  color: 'red'
+  icon: 'copy'
+  color: 'white'
 
 # Define your inputs here.
 inputs:
-  milliseconds:
-    description: 'Your input description here'
+  root:
+    description: 'MCSManager实例的根URL'
     required: true
-    default: '1000'
-
-# Define your outputs here.
-outputs:
-  time:
-    description: 'Your output description here'
+  daemon-id:
+    description: 'MCSManager节点ID'
+    required: true
+  server-id:
+    description: 'MCSManager服务器实例ID'
+    required: true
+  api-key:
+    description: '用于进行MCSManager实例API操作的API密钥'
+    required: true
+  source:
+    description: '要上传的文件（glob格式）'
+    required: true
+  target-path:
+    description: '对应实例的目标路径'
+    required: true
 
 runs:
   using: node20
