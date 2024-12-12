@@ -1,7 +1,12 @@
-/**
- * The entrypoint for the action.
- */
-import { run } from './main'
+import * as core from '@actions/core';
 
-// eslint-disable-next-line @typescript-eslint/no-floating-promises
-run()
+async function main() {
+    const root = core.getInput("root");
+    if (!root.startsWith("http://") || !root.startsWith("https://")) {
+        core.setFailed("root must be a valid URL");
+        return;
+    }
+    const url = new URL(root);
+}
+
+main();
