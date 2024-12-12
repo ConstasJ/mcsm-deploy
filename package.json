@@ -69,7 +69,9 @@
   "dependencies": {
     "@actions/core": "^1.11.1",
     "@actions/glob": "^0.5.0",
-    "@actions/http-client": "^2.2.3"
+    "@actions/http-client": "^2.2.3",
+    "axios": "^1.7.9",
+    "formdata-node": "^6.0.3"
   },
   "devDependencies": {
     "@github/local-action": "^2.2.1",
