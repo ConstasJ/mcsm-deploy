@@ -23,5 +23,6 @@ export async function run() {
     }
     core.info('Connection successful');
     const globber = await glob.create(core.getInput("source"));
-    const files = globber.glob();
+    const files = await globber.glob();
+    core.debug(files.join("\n"));
 }
