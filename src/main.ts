@@ -32,6 +32,10 @@ export async function run() {
   core.info('Connection successful')
   const globber = await glob.create(core.getInput('source'))
   const files = await globber.glob()
+  if (files.length <= 0) {
+    core.setFailed('No file matches the source pattern');
+    return;
+  }
   const daemonId = core.getInput('daemon-id')
   const appId = core.getInput('server-id')
   const targetPath = core.getInput('target-path')
