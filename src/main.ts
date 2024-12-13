@@ -3,7 +3,7 @@ import * as http from '@actions/http-client'
 import * as glob from '@actions/glob'
 import path from 'path'
 import fs from 'fs'
-import axios from 'axios'
+import axios, { AxiosError } from 'axios'
 import { fileFromPath } from 'formdata-node/file-from-path'
 import { FormData } from 'formdata-node'
 
@@ -39,84 +39,74 @@ export async function run() {
   await Promise.all(
     files.map(async file => {
       core.info(`find file ${path.relative(process.cwd(), file)}`)
-      core.info(
-        `Uploading file to configured MCSManager application instance...`
-      )
-      const fileName = path.basename(file)
-      const fileListObj = JSON.parse(
-        await (
-          await client.get(
-            `${root}/api/files/list?apikey=${key}&daemonId=${daemonId}&uuid=${appId}&target=${targetPath}&file_name=${fileName}&page=0&page_size=100`,
-            headers
-          )
-        ).readBody()
-      )
-      if ((fileListObj.data.items as any[]).length > 0) {
-        core.info(
-          `File ${fileName} already exists on the server, deleting it...`
+    core.info(`Uploading file to configured MCSManager application instance...`)
+    const fileName = path.basename(file)
+    core.info(`Getting upload URL for file ${fileName}...`)
+    const uploadArgObj = JSON.parse(
+      await (
+        await client.post(
+          `${root}/api/files/upload?apikey=${key}&daemonId=${daemonId}&uuid=${appId}&upload_dir=${targetPath}&file_name=${fileName}`,
+          ''
         )
-        const delRes = await client.request(
-          'DELETE',
-          `${root}/api/files?apikey=${key}&daemonId=${daemonId}&uuid=${appId}`,
-          JSON.stringify({
-            targets: [`/${targetPath}/${fileName}`]
-          }),
-          headers
-        )
-        if (delRes.message.statusCode != 200) {
-          core.setFailed(`Failed to delete file ${targetPath}/${fileName}`)
-          return
-        }
-        core.info(`File ${fileName} deleted successfully`)
+      ).readBody()
+    )
+    if (uploadArgObj.status != 200) {
+      core.setFailed(`Failed to get upload URL for file ${fileName}`)
+      return
+    }
+    core.info(`Uploading file ${fileName} to ${uploadArgObj.data.addr}...`)
+    const form = new FormData()
+    form.append('file', await fileFromPath(file))
+    const addr = (() => {
+      if (uploadArgObj.data.addr.startsWith('wss://')) {
+        return uploadArgObj.data.addr.replace('wss://', '')
+      } else {
+        return uploadArgObj.data.addr
       }
-      core.info(`Getting upload URL for file ${fileName}...`)
-      const uploadArgObj = JSON.parse(
-        await (
-          await client.post(
-            `${root}/api/files/upload?apikey=${key}&daemonId=${daemonId}&uuid=${appId}&upload_dir=${targetPath}&file_name=${fileName}`,
-            ''
-          )
-        ).readBody()
-      )
-      if (uploadArgObj.status != 200) {
-        core.setFailed(`Failed to get upload URL for file ${fileName}`)
-        return
-      }
-      core.info(`Uploading file ${fileName} to ${uploadArgObj.data.addr}...`)
-      const form = new FormData()
-      form.append('file', await fileFromPath(file))
-      const addr = (() => {
-        if (uploadArgObj.data.addr.startsWith('wss://')) {
-          return uploadArgObj.data.addr.replace('wss://', '')
-        } else {
-          return uploadArgObj.data.addr
+    })()
+    const uploadRes = await axios.postForm(
+      `https://${addr}/upload/${uploadArgObj.data.password}?overwrite=true`,
+      form,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Content-Length': fs.readFileSync(file).length
         }
-      })()
-      const uploadRes = await axios.postForm(
-        `https://${addr}/upload/${uploadArgObj.data.password}`,
-        form,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-            'Content-Length': fs.readFileSync(file).length
-          }
-        }
-      )
-      if (uploadRes.status != 200) {
-        core.setFailed(`Failed to upload file ${fileName}`)
-        return
       }
-      core.info(`File ${fileName} uploaded successfully`)
+    )
+    if (uploadRes.status != 200) {
+      core.setFailed(`Failed to upload file ${fileName}`)
+      return
+    }
+    core.info(`File ${fileName} uploaded successfully`)
     })
   )
-  core.info(`Sleep 5 seconds...`)
-  await new Promise(resolve => setTimeout(resolve, 5000))
   core.info(`Restart application instance...`)
-  const restartRes = await client.get(
-    `${root}/api/protected_instance/restart?apikey=${key}&daemonId=${daemonId}&uuid=${appId}`,
-    headers
-  )
-  if (restartRes.message.statusCode != 200) {
+  let restartRes;
+  try {
+    restartRes = await axios.get(
+      `${root}/api/protected_instance/restart?apikey=${key}&daemonId=${daemonId}&uuid=${appId}`,
+      {
+        headers,
+      }
+    )
+  } catch (e: any) {
+    if (e instanceof AxiosError) {
+      if (e.response) {
+        core.debug(JSON.stringify(e.response.data));
+        core.debug(e.response.status.toString());
+        core.debug(JSON.stringify(e.response.headers));
+      } else if (e.request) {
+        core.debug(JSON.stringify(e.request));
+      } else {
+        core.debug(e.message);
+      }
+      core.debug(JSON.stringify(e.config) || "");
+    }
+    core.setFailed("Failed to restart application instance");
+    return;
+  }
+  if (restartRes.status != 200) {
     core.setFailed(`Failed to restart application instance`)
     return
   }

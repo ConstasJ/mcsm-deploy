@@ -31702,7 +31702,7 @@ const http = __importStar(__nccwpck_require__(787));
 const glob = __importStar(__nccwpck_require__(8505));
 const path_1 = __importDefault(__nccwpck_require__(6928));
 const fs_1 = __importDefault(__nccwpck_require__(9896));
-const axios_1 = __importDefault(__nccwpck_require__(4584));
+const axios_1 = __importStar(__nccwpck_require__(4584));
 const file_from_path_1 = __nccwpck_require__(6989);
 const formdata_node_1 = __nccwpck_require__(4279);
 async function run() {
@@ -31735,18 +31735,6 @@ async function run() {
         core.info(`find file ${path_1.default.relative(process.cwd(), file)}`);
         core.info(`Uploading file to configured MCSManager application instance...`);
         const fileName = path_1.default.basename(file);
-        const fileListObj = JSON.parse(await (await client.get(`${root}/api/files/list?apikey=${key}&daemonId=${daemonId}&uuid=${appId}&target=${targetPath}&file_name=${fileName}&page=0&page_size=100`, headers)).readBody());
-        if (fileListObj.data.items.length > 0) {
-            core.info(`File ${fileName} already exists on the server, deleting it...`);
-            const delRes = await client.request('DELETE', `${root}/api/files?apikey=${key}&daemonId=${daemonId}&uuid=${appId}`, JSON.stringify({
-                targets: [`/${targetPath}/${fileName}`]
-            }), headers);
-            if (delRes.message.statusCode != 200) {
-                core.setFailed(`Failed to delete file ${targetPath}/${fileName}`);
-                return;
-            }
-            core.info(`File ${fileName} deleted successfully`);
-        }
         core.info(`Getting upload URL for file ${fileName}...`);
         const uploadArgObj = JSON.parse(await (await client.post(`${root}/api/files/upload?apikey=${key}&daemonId=${daemonId}&uuid=${appId}&upload_dir=${targetPath}&file_name=${fileName}`, '')).readBody());
         if (uploadArgObj.status != 200) {
@@ -31764,7 +31752,7 @@ async function run() {
                 return uploadArgObj.data.addr;
             }
         })();
-        const uploadRes = await axios_1.default.postForm(`https://${addr}/upload/${uploadArgObj.data.password}`, form, {
+        const uploadRes = await axios_1.default.postForm(`https://${addr}/upload/${uploadArgObj.data.password}?overwrite=true`, form, {
             headers: {
                 'Content-Type': 'multipart/form-data',
                 'Content-Length': fs_1.default.readFileSync(file).length
@@ -31776,11 +31764,32 @@ async function run() {
         }
         core.info(`File ${fileName} uploaded successfully`);
     }));
-    core.info(`Sleep 5 seconds...`);
-    await new Promise(resolve => setTimeout(resolve, 5000));
     core.info(`Restart application instance...`);
-    const restartRes = await client.get(`${root}/api/protected_instance/restart?apikey=${key}&daemonId=${daemonId}&uuid=${appId}`, headers);
-    if (restartRes.message.statusCode != 200) {
+    let restartRes;
+    try {
+        restartRes = await axios_1.default.get(`${root}/api/protected_instance/restart?apikey=${key}&daemonId=${daemonId}&uuid=${appId}`, {
+            headers
+        });
+    }
+    catch (e) {
+        if (e instanceof axios_1.AxiosError) {
+            if (e.response) {
+                core.debug(JSON.stringify(e.response.data));
+                core.debug(e.response.status.toString());
+                core.debug(JSON.stringify(e.response.headers));
+            }
+            else if (e.request) {
+                core.debug(JSON.stringify(e.request));
+            }
+            else {
+                core.debug(e.message);
+            }
+            core.debug(JSON.stringify(e.config) || '');
+        }
+        core.setFailed('Failed to restart application instance');
+        return;
+    }
+    if (restartRes.status != 200) {
         core.setFailed(`Failed to restart application instance`);
         return;
     }
