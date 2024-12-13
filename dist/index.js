@@ -31727,6 +31727,10 @@ async function run() {
     core.info('Connection successful');
     const globber = await glob.create(core.getInput('source'));
     const files = await globber.glob();
+    if (files.length <= 0) {
+        core.setFailed('No file matches the source pattern');
+        return;
+    }
     const daemonId = core.getInput('daemon-id');
     const appId = core.getInput('server-id');
     const targetPath = core.getInput('target-path');
@@ -31768,7 +31772,7 @@ async function run() {
     let restartRes;
     try {
         restartRes = await axios_1.default.get(`${root}/api/protected_instance/restart?apikey=${key}&daemonId=${daemonId}&uuid=${appId}`, {
-            headers
+            headers,
         });
     }
     catch (e) {
@@ -31784,9 +31788,9 @@ async function run() {
             else {
                 core.debug(e.message);
             }
-            core.debug(JSON.stringify(e.config) || '');
+            core.debug(JSON.stringify(e.config) || "");
         }
-        core.setFailed('Failed to restart application instance');
+        core.setFailed("Failed to restart application instance");
         return;
     }
     if (restartRes.status != 200) {
