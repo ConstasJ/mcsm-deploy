@@ -24,8 +24,10 @@ export async function run() {
     headers,
     timeout: 10000
   })
+  core.debug(`status: ${statusRes.status}`)
   const status = await statusRes.data
-  if (JSON.parse(status).status != '200') {
+  core.debug(JSON.stringify(status))
+  if (statusRes.status !== 200) {
     core.setFailed('Failed to connect to the server')
     return
   }
@@ -48,17 +50,15 @@ export async function run() {
       )
       const fileName = path.basename(file)
       core.info(`Getting upload URL for file ${fileName}...`)
-      const uploadArgObj = JSON.parse(
-        await (
-          await axios.post(
-            `${root}/api/files/upload?apikey=${key}&daemonId=${daemonId}&uuid=${appId}&upload_dir=${targetPath}&file_name=${fileName}`,
-            {
-              headers,
-              timeout: 10000
-            }
-          )
-        ).data
-      )
+      const uploadArgObj = await (
+        await axios.post(
+          `${root}/api/files/upload?apikey=${key}&daemonId=${daemonId}&uuid=${appId}&upload_dir=${targetPath}&file_name=${fileName}`,
+          {
+            headers,
+            timeout: 10000
+          }
+        )
+      ).data
       if (uploadArgObj.status != 200) {
         core.setFailed(`Failed to get upload URL for file ${fileName}`)
         return
