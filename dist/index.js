@@ -31745,18 +31745,20 @@ async function run() {
             core.setFailed(`Failed to get upload URL for file ${fileName}`);
             return;
         }
-        core.info(`Uploading file ${fileName} to ${uploadArgObj.data.addr}...`);
         const form = new formdata_node_1.FormData();
         form.append('file', await (0, file_from_path_1.fileFromPath)(file));
         const addr = (() => {
             if (uploadArgObj.data.addr.startsWith('wss://')) {
-                return uploadArgObj.data.addr.replace('wss://', '');
+                return uploadArgObj.data.addr
+                    .replace('wss://', 'https://')
+                    .replace(':443', '');
             }
             else {
                 return uploadArgObj.data.addr;
             }
         })();
-        const uploadRes = await axios_1.default.postForm(`https://${addr}/upload/${uploadArgObj.data.password}?overwrite=true`, form, {
+        core.info(`Uploading file ${fileName} to ${addr}...`);
+        const uploadRes = await axios_1.default.postForm(`${addr}/upload/${uploadArgObj.data.password}?overwrite=true`, form, {
             headers: {
                 'Content-Type': 'multipart/form-data',
                 'Content-Length': fs_1.default.readFileSync(file).length
@@ -31772,7 +31774,7 @@ async function run() {
     let restartRes;
     try {
         restartRes = await axios_1.default.get(`${root}/api/protected_instance/restart?apikey=${key}&daemonId=${daemonId}&uuid=${appId}`, {
-            headers,
+            headers
         });
     }
     catch (e) {
@@ -31788,9 +31790,9 @@ async function run() {
             else {
                 core.debug(e.message);
             }
-            core.debug(JSON.stringify(e.config) || "");
+            core.debug(JSON.stringify(e.config) || '');
         }
-        core.setFailed("Failed to restart application instance");
+        core.setFailed('Failed to restart application instance');
         return;
     }
     if (restartRes.status != 200) {
