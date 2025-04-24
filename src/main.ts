@@ -74,7 +74,7 @@ export async function run() {
           return uploadArgObj.data.addr
         }
       })()
-      core.info(`Uploading file ${fileName} to ${addr}...`)
+      core.info(`Uploading file ${fileName} to ${addr}`)
       const uploadRes = await axios.postForm(
         `${addr}/upload/${uploadArgObj.data.password}?overwrite=true`,
         form,
@@ -83,7 +83,7 @@ export async function run() {
             'Content-Type': 'multipart/form-data',
             'Content-Length': fs.readFileSync(file).length
           },
-          timeout: 10000
+          timeout: 1200000
         }
       )
       if (uploadRes.status != 200) {
