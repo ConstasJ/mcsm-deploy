@@ -31718,8 +31718,11 @@ async function run() {
         'X-Requested-With': 'XMLHttpRequest'
     };
     const key = core.getInput('api-key');
-    const statusRes = await client.get(`${root}/api/overview?apikey=${key}`, headers);
-    const status = await statusRes.readBody();
+    const statusRes = await axios_1.default.get(`${root}/api/overview?apikey=${key}`, {
+        headers,
+        timeout: 10000
+    });
+    const status = await statusRes.data;
     if (JSON.parse(status).status != '200') {
         core.setFailed('Failed to connect to the server');
         return;
@@ -31740,7 +31743,10 @@ async function run() {
         core.info(`Uploading file to configured MCSManager application instance...`);
         const fileName = path_1.default.basename(file);
         core.info(`Getting upload URL for file ${fileName}...`);
-        const uploadArgObj = JSON.parse(await (await client.post(`${root}/api/files/upload?apikey=${key}&daemonId=${daemonId}&uuid=${appId}&upload_dir=${targetPath}&file_name=${fileName}`, '')).readBody());
+        const uploadArgObj = JSON.parse(await (await axios_1.default.post(`${root}/api/files/upload?apikey=${key}&daemonId=${daemonId}&uuid=${appId}&upload_dir=${targetPath}&file_name=${fileName}`, {
+            headers,
+            timeout: 10000
+        })).data);
         if (uploadArgObj.status != 200) {
             core.setFailed(`Failed to get upload URL for file ${fileName}`);
             return;
@@ -31762,7 +31768,8 @@ async function run() {
             headers: {
                 'Content-Type': 'multipart/form-data',
                 'Content-Length': fs_1.default.readFileSync(file).length
-            }
+            },
+            timeout: 10000
         });
         if (uploadRes.status != 200) {
             core.setFailed(`Failed to upload file ${fileName}`);
@@ -31774,7 +31781,8 @@ async function run() {
     let restartRes;
     try {
         restartRes = await axios_1.default.get(`${root}/api/protected_instance/restart?apikey=${key}&daemonId=${daemonId}&uuid=${appId}`, {
-            headers
+            headers,
+            timeout: 10000
         });
     }
     catch (e) {

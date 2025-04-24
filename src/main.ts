@@ -20,11 +20,11 @@ export async function run() {
     'X-Requested-With': 'XMLHttpRequest'
   }
   const key = core.getInput('api-key')
-  const statusRes = await client.get(
-    `${root}/api/overview?apikey=${key}`,
-    headers
-  )
-  const status = await statusRes.readBody()
+  const statusRes = await axios.get(`${root}/api/overview?apikey=${key}`, {
+    headers,
+    timeout: 10000
+  })
+  const status = await statusRes.data
   if (JSON.parse(status).status != '200') {
     core.setFailed('Failed to connect to the server')
     return
@@ -50,11 +50,14 @@ export async function run() {
       core.info(`Getting upload URL for file ${fileName}...`)
       const uploadArgObj = JSON.parse(
         await (
-          await client.post(
+          await axios.post(
             `${root}/api/files/upload?apikey=${key}&daemonId=${daemonId}&uuid=${appId}&upload_dir=${targetPath}&file_name=${fileName}`,
-            ''
+            {
+              headers,
+              timeout: 10000
+            }
           )
-        ).readBody()
+        ).data
       )
       if (uploadArgObj.status != 200) {
         core.setFailed(`Failed to get upload URL for file ${fileName}`)
@@ -79,7 +82,8 @@ export async function run() {
           headers: {
             'Content-Type': 'multipart/form-data',
             'Content-Length': fs.readFileSync(file).length
-          }
+          },
+          timeout: 10000
         }
       )
       if (uploadRes.status != 200) {
@@ -95,7 +99,8 @@ export async function run() {
     restartRes = await axios.get(
       `${root}/api/protected_instance/restart?apikey=${key}&daemonId=${daemonId}&uuid=${appId}`,
       {
-        headers
+        headers,
+        timeout: 10000
       }
     )
   } catch (e: any) {
